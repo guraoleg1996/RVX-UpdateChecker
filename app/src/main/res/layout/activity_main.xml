@@ -156,7 +156,7 @@
             android:id="@+id/btn_self_update"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/btn_check_self_update" />
+            android:text="@string/btn_check_installed" />
 
         <Button
             android:id="@+id/btn_exit"

@@ -1,21 +1,29 @@
 package com.example.rvxupdatechecker
 
+import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
+import android.view.Gravity
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.os.LocaleListCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -34,6 +42,11 @@ class SettingsActivity : AppCompatActivity() {
     private val THEME_DARK = 2
 
     private lateinit var bottomBar: LinearLayout
+
+    private val NOTIF_CHANNEL_ID = "rvx_update_channel"
+    private val NOTIF_ID = 1001
+
+    private var checkingDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,6 +68,7 @@ class SettingsActivity : AppCompatActivity() {
 
         val btnSave = findViewById<Button>(R.id.btn_save)
         val btnClose = findViewById<Button>(R.id.btn_close_settings)
+        val btnCheckUpdate = findViewById<Button>(R.id.btn_check_update)
 
         bottomBar = findViewById(R.id.bottom_bar)
 
@@ -82,7 +96,6 @@ class SettingsActivity : AppCompatActivity() {
         tvMusicSiteLabel.text = if (musicAppName != getString(R.string.not_installed_label)) "$siteNameMusicStatic — $musicAppName" else siteNameMusicStatic
         tvGmsSiteLabel.text = if (gmsAppName != getString(R.string.not_installed_label)) "$siteNameGmsStatic — $gmsAppName" else siteNameGmsStatic
 
-        // Language spinner
         val langs = arrayOf("Русский", "English")
         spinnerLang.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, langs)
 
@@ -94,7 +107,6 @@ class SettingsActivity : AppCompatActivity() {
             spinnerLang.setSelection(if (currentLang == "ru") 0 else 1)
         }
 
-        // Theme spinner
         val themes = arrayOf(getString(R.string.theme_system), getString(R.string.theme_light), getString(R.string.theme_dark))
         spinnerTheme.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, themes)
         val savedTheme = prefs.getInt("pref_theme_mode", THEME_SYSTEM)
@@ -103,7 +115,6 @@ class SettingsActivity : AppCompatActivity() {
         val savedAmoled = prefs.getBoolean("pref_amoled", false)
         switchAmoled.isChecked = savedAmoled
 
-        // Обработка WindowInsets для bottomBar (чтобы кнопка Save не была под навигацией)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.scroll_content)) { _, insets ->
             val sysBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val bottomInset = sysBars.bottom
@@ -154,12 +165,127 @@ class SettingsActivity : AppCompatActivity() {
 
             Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
 
-            // Пересоздаём Activity, чтобы изменения темы/локали применились немедленно
             recreate()
         }
 
         btnClose.setOnClickListener {
             finish()
+        }
+
+        btnCheckUpdate.setOnClickListener {
+            // Показываем модальный прогресс и уведомление, затем запускаем проверку
+            showProgressDialog()
+            ensureNotificationChannel()
+            showCheckingNotification()
+
+            UpdateChecker.checkForUpdate(
+                context = this,
+                onStart = { /* индикатор уже показан */ },
+                onResult = { result ->
+                    // Закрываем прогресс-диалог
+                    dismissProgressDialog()
+
+                    when (result) {
+                        is UpdateResult.UpToDate -> {
+                            updateNotificationResult(getString(R.string.update_notification_title), getString(R.string.update_up_to_date))
+                            Toast.makeText(this, getString(R.string.update_up_to_date), Toast.LENGTH_SHORT).show()
+                        }
+                        is UpdateResult.UpdateAvailable -> {
+                            val tag = result.tag
+                            val apkUrl = result.apkUrl
+                            val prereleaseNote = if (result.isPrerelease) " (pre-release)" else ""
+                            updateNotificationResult(getString(R.string.update_notification_title), getString(R.string.update_available_message, "$tag$prereleaseNote"))
+                            AlertDialog.Builder(this)
+                                .setTitle(getString(R.string.update_available_title))
+                                .setMessage(getString(R.string.update_available_message, "$tag$prereleaseNote"))
+                                .setPositiveButton(getString(R.string.yes)) { _, _ ->
+                                    if (!apkUrl.isNullOrBlank()) {
+                                        UpdateChecker.openUrl(this, apkUrl)
+                                    } else {
+                                        UpdateChecker.openReleasesPage(this)
+                                    }
+                                }
+                                .setNegativeButton(getString(R.string.no), null)
+                                .show()
+                        }
+                        is UpdateResult.Error -> {
+                            updateNotificationResult(getString(R.string.update_notification_title), result.message)
+                            Toast.makeText(this, result.message, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+                suppressUpToDate = false
+            )
+        }
+    }
+
+    private fun ensureNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = getString(R.string.update_notification_channel_name)
+            val desc = getString(R.string.update_notification_channel_desc)
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = android.app.NotificationChannel(NOTIF_CHANNEL_ID, name, importance).apply {
+                description = desc
+            }
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.createNotificationChannel(channel)
+        }
+    }
+
+    private fun showCheckingNotification() {
+        val builder = NotificationCompat.Builder(this, NOTIF_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(getString(R.string.update_notification_title))
+            .setContentText(getString(R.string.update_checking_message))
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        NotificationManagerCompat.from(this).notify(NOTIF_ID, builder.build())
+    }
+
+    private fun updateNotificationResult(title: String, text: String, ongoing: Boolean = false) {
+        val builder = NotificationCompat.Builder(this, NOTIF_CHANNEL_ID)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setOngoing(ongoing)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        NotificationManagerCompat.from(this).notify(NOTIF_ID, builder.build())
+    }
+
+    private fun showProgressDialog() {
+        if (checkingDialog?.isShowing == true) return
+
+        val builder = AlertDialog.Builder(this)
+        builder.setCancelable(false)
+
+        val progressBar = ProgressBar(this).apply {
+            isIndeterminate = true
+            val pad = dpToPx(16)
+            setPadding(pad, pad, pad, pad)
+        }
+
+        val container = FrameLayout(this)
+        val params = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            gravity = Gravity.CENTER
+        }
+        container.addView(progressBar, params)
+
+        builder.setView(container)
+        builder.setMessage(getString(R.string.update_checking_message))
+        checkingDialog = builder.create()
+        checkingDialog?.show()
+    }
+
+    private fun dismissProgressDialog() {
+        try {
+            checkingDialog?.dismiss()
+        } catch (e: Exception) {
+            // ignore
+        } finally {
+            checkingDialog = null
         }
     }
 

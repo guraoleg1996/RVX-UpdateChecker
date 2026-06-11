@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/settings_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
@@ -19,8 +20,10 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="32dp"
-            android:paddingVertical="16dp">
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -52,7 +55,9 @@
             <EditText
                 android:id="@+id/et_main"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:layout_marginTop="8dp" />
 
             <TextView
                 android:id="@+id/tv_label_music_site"
@@ -66,7 +71,9 @@
             <EditText
                 android:id="@+id/et_music"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:layout_marginTop="8dp" />
 
             <TextView
                 android:id="@+id/tv_label_gms_site"
@@ -80,7 +87,9 @@
             <EditText
                 android:id="@+id/et_gms"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:layout_marginTop="8dp" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -126,14 +135,12 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
-            <!-- Добавляем нижний отступ, чтобы контент не прятался под фиксированной нижней панелью -->
             <View
                 android:layout_width="match_parent"
                 android:layout_height="16dp" />
         </LinearLayout>
     </ScrollView>
 
-    <!-- Нижняя фиксированная панель: кнопка сохранить и (опционально) дополнительная кнопка -->
     <LinearLayout
         android:id="@+id/bottom_bar"
         android:layout_width="0dp"
@@ -153,6 +160,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/btn_save" />
+
+        <Button
+            android:id="@+id/btn_check_update"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_check_self_update"
+            android:layout_marginTop="8dp" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

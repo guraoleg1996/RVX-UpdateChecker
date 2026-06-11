@@ -1,20 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">RVX UpdateChecker</string>
+
+    <!-- Buttons -->
     <string name="btn_settings">Настройки</string>
-    <string name="btn_check_self_update">Проверить обновление</string>
+    <string name="btn_check_installed">Проверить установленные приложения</string>
+    <string name="btn_check_self_update">Проверить обновление приложения</string>
     <string name="btn_exit">Выход</string>
+    <string name="btn_save">Сохранить настройки</string>
+    <string name="btn_close">Закрыть</string>
+
+    <!-- Status -->
     <string name="status_not_found">Приложение не установлено\nили неверное имя пакета</string>
     <string name="installed_version">Установленная версия: %1$s</string>
     <string name="site_version">Версия на сайте: %1$s</string>
+
+    <!-- Actions -->
     <string name="action_install">Установить</string>
     <string name="action_update">Обновить</string>
     <string name="action_open">Открыть</string>
     <string name="action_check">Проверить</string>
+
+    <!-- Errors -->
     <string name="status_error_fetch">Не удалось получить данные с сайта</string>
     <string name="status_error_no_url">Нет доступной ссылки</string>
     <string name="status_error_open">Не удалось открыть ссылку</string>
 
+    <!-- Labels -->
     <string name="not_installed_label">Не установлено</string>
     <string name="version_not_found">не найдено</string>
     <string name="version_no_data">нет данных</string>
@@ -25,8 +37,25 @@
     <string name="theme_light">Светлая</string>
     <string name="theme_dark">Тёмная</string>
     <string name="lbl_amoled">Использовать AMOLED (чёрный фон в тёмной теме)</string>
-    <string name="btn_save">Сохранить настройки</string>
-    <string name="btn_close">Закрыть</string>
+
     <string name="desc_close_settings">Закрыть настройки</string>
     <string name="settings_saved">Настройки сохранены</string>
+
+    <!-- Update dialog strings -->
+    <string name="update_available_title">Доступно обновление</string>
+    <string name="update_available_message">Новая версия %1$s доступна. Установить?</string>
+    <string name="yes">Да</string>
+    <string name="no">Нет</string>
+    <string name="apk_not_found_in_release">APK не найден в релизе</string>
+    <string name="update_check_error">Ошибка проверки обновления</string>
+    <string name="update_no_releases">Релизы или теги не найдены на GitHub</string>
+
+    <!-- Notifications -->
+    <string name="update_notification_channel_name">Проверка обновлений</string>
+    <string name="update_notification_channel_desc">Уведомления о ходе проверки обновлений</string>
+    <string name="update_notification_title">RVX UpdateChecker</string>
+
+    <!-- Feedback -->
+    <string name="update_checking_message">Проверка обновлений…</string>
+    <string name="update_up_to_date">Приложение актуально</string>
 </resources>

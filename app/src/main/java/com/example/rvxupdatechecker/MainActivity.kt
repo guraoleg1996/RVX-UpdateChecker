@@ -7,6 +7,8 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.util.TypedValue
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -19,6 +21,8 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 
 class MainActivity : AppCompatActivity() {
+
+    private val TAG = "MainActivity"
 
     private val siteNamesStatic = mapOf(
         "anddea.youtube" to "ReVanced Extended",
@@ -45,9 +49,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btn_self_update).setOnClickListener {
-            // при нажатии показываем индикатор свайпа и обновляем
+            // На главном экране эта кнопка проверяет актуальность установленных приложений
             swipeRefresh.isRefreshing = true
-            refreshUiData()
+            refreshUiData(checkSelfApp = false) // не проверяем само приложение здесь
         }
 
         findViewById<Button>(R.id.btn_exit).setOnClickListener {
@@ -55,20 +59,24 @@ class MainActivity : AppCompatActivity() {
         }
 
         swipeRefresh.setOnRefreshListener {
-            refreshUiData()
+            refreshUiData(checkSelfApp = false)
         }
+
+        // стартовая загрузка (используем swipeRefresh как индикатор)
+        swipeRefresh.isRefreshing = true
+        refreshUiData(checkSelfApp = false)
     }
 
     override fun onResume() {
         super.onResume()
         applyAmoledIfNeeded()
-
-        // Запускаем обновление сразу при входе в экран
-        swipeRefresh.isRefreshing = true
-        refreshUiData()
     }
 
-    private fun refreshUiData() {
+    /**
+     * checkSelfApp: если true — дополнительно проверяем обновление самого RVX UpdateChecker (через UpdateChecker)
+     * если false — только проверяем версии установленных приложений (основная логика UI)
+     */
+    private fun refreshUiData(checkSelfApp: Boolean) {
         val prefs = getSharedPreferences("RVX_PREFS", Context.MODE_PRIVATE)
 
         val pkgMain = prefs.getString("pkg_main", "anddea.youtube") ?: "anddea.youtube"
@@ -124,13 +132,76 @@ class MainActivity : AppCompatActivity() {
                 configureActionButton(btnMainAction, pkgMain, mainAppName, mainVersionInstalled, siteVerMain, siteUrls[pkgMain])
                 configureActionButton(btnMusicAction, pkgMusic, musicAppName, musicVersionInstalled, siteVerMusic, siteUrls[pkgMusic])
                 configureActionButton(btnGmsAction, pkgGms, gmsAppName, gmsVersionInstalled, siteVerGms, siteUrls[pkgGms])
+
+                // Если требуется — дополнительно проверяем само приложение (Settings -> manual check)
+                if (checkSelfApp) {
+                    UpdateChecker.checkForUpdate(
+                        this@MainActivity,
+                        onStart = { Log.d(TAG, "Update check started (main manual)") },
+                        onResult = { result ->
+                            swipeRefresh.isRefreshing = false
+                            when (result) {
+                                is UpdateResult.UpToDate -> {
+                                    // На главном экране при ручной проверке из настроек мы не ожидаем этого пути,
+                                    // но если checkSelfApp==true и UpToDate — можно показать тост
+                                    Toast.makeText(this@MainActivity, getString(R.string.update_up_to_date), Toast.LENGTH_SHORT).show()
+                                }
+                                is UpdateResult.UpdateAvailable -> {
+                                    showInstallDialog(result.tag, result.apkUrl, result.isPrerelease)
+                                }
+                                is UpdateResult.Error -> {
+                                    Toast.makeText(this@MainActivity, result.message, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        suppressUpToDate = false
+                    )
+                } else {
+                    // На главном экране: проверяем обновление самого приложения, но подавляем "актуально" тост
+                    UpdateChecker.checkForUpdate(
+                        this@MainActivity,
+                        onStart = { Log.d(TAG, "Update check started (main background)") },
+                        onResult = { result ->
+                            swipeRefresh.isRefreshing = false
+                            when (result) {
+                                is UpdateResult.UpToDate -> {
+                                    Log.d(TAG, "App is up to date (suppressed on main)")
+                                }
+                                is UpdateResult.UpdateAvailable -> {
+                                    showInstallDialog(result.tag, result.apkUrl, result.isPrerelease)
+                                }
+                                is UpdateResult.Error -> {
+                                    Log.w(TAG, "Update check error on main: ${result.message}")
+                                }
+                            }
+                        },
+                        suppressUpToDate = true
+                    )
+                }
             } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, getString(R.string.status_error_fetch), Toast.LENGTH_SHORT).show()
-            } finally {
-                // Скрываем индикатор свайпа в любом случае
                 swipeRefresh.isRefreshing = false
+                Toast.makeText(this@MainActivity, getString(R.string.status_error_fetch), Toast.LENGTH_SHORT).show()
+                Log.e(TAG, "Error refreshing UI data", e)
             }
         }
+    }
+
+    private fun showInstallDialog(tag: String, apkUrl: String?, isPrerelease: Boolean) {
+        val prereleaseNote = if (isPrerelease) " (pre-release)" else ""
+        val message = getString(R.string.update_available_message, "$tag$prereleaseNote")
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(getString(R.string.update_available_title))
+            .setMessage(message)
+            .setPositiveButton(getString(R.string.yes)) { _, _ ->
+                if (!apkUrl.isNullOrBlank()) {
+                    UpdateChecker.openUrl(this, apkUrl)
+                } else {
+                    UpdateChecker.openReleasesPage(this)
+                }
+            }
+            .setNegativeButton(getString(R.string.no), null)
+            .show()
     }
 
     private fun configureActionButton(btn: Button, pkgName: String, installedName: String, installedVersion: String, siteVersion: String?, siteUrl: String?) {
@@ -199,6 +270,7 @@ class MainActivity : AppCompatActivity() {
             val mBody = verRegex.find(doc.body().text())
             mBody?.value
         } catch (e: Exception) {
+            Log.w(TAG, "fetchVersionFromSiteJsoup failed for $url", e)
             null
         }
     }
@@ -227,6 +299,7 @@ class MainActivity : AppCompatActivity() {
             val mBody = verRegex.find(doc.body().text())
             mBody?.value
         } catch (e: Exception) {
+            Log.w(TAG, "fetchVersionForGmscore failed for $url", e)
             null
         }
     }
@@ -282,5 +355,14 @@ class MainActivity : AppCompatActivity() {
             typedArray.recycle()
             window.decorView.background = bg
         }
+    }
+
+    // Helper to convert dp to px
+    private fun dpToPx(dp: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp.toFloat(),
+            resources.displayMetrics
+        ).toInt()
     }
 }
