@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RVX UpdateChecker</string>
+    <string name="btn_settings">Настройки</string>
+    <string name="btn_check_self_update">Проверить обновление</string>
+    <string name="btn_exit">Выход</string>
+    <string name="status_not_found">Приложение не установлено\nили неверное имя пакета</string>
+    <string name="installed_version">Установленная версия: %1$s</string>
+    <string name="site_version">Версия на сайте: %1$s</string>
+    <string name="action_install">Установить</string>
+    <string name="action_update">Обновить</string>
+    <string name="action_open">Открыть</string>
+    <string name="action_check">Проверить</string>
+    <string name="status_error_fetch">Не удалось получить данные с сайта</string>
+    <string name="status_error_no_url">Нет доступной ссылки</string>
+    <string name="status_error_open">Не удалось открыть ссылку</string>
+
+    <string name="not_installed_label">Не установлено</string>
+    <string name="version_not_found">не найдено</string>
+    <string name="version_no_data">нет данных</string>
+
+    <string name="lbl_lang">Язык:</string>
+    <string name="lbl_theme">Тема приложения</string>
+    <string name="theme_system">По выбору системы</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="lbl_amoled">Использовать AMOLED (чёрный фон в тёмной теме)</string>
+    <string name="btn_save">Сохранить настройки</string>
+    <string name="btn_close">Закрыть</string>
+    <string name="desc_close_settings">Закрыть настройки</string>
+    <string name="settings_saved">Настройки сохранены</string>
+</resources>
