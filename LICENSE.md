@@ -1,4 +1,3 @@
-===============================================================================
 LICENSE & DISCLAIMER
 Project: RVX UpdateChecker
 Copyright (c) 2026 guraoleg1996
